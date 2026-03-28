@@ -1,0 +1,22 @@
+{
+  "name": "private-poker-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for Private Poker - FHE Texas Hold'em",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "wagmi": "^1.4.0",
+    "viem": "^1.10.0",
+    "cofhe-sdk": "latest"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^4.4.0"
+  }
+}
