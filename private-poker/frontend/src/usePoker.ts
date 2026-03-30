@@ -1,79 +1,36 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useReadContract } from 'wagmi';
-import { encrypt, decrypt } from 'cofhe-sdk';
+import { useAccount, useWriteContract } from 'wagmi';
+import { cofhejs, Encryptable } from 'cofhejs/web'; // browser-specific entry point
 
-// Contract ABIs (simplified)
+// Contract ABIs
 const POKER_ENGINE_ABI = [
-  {
-    "inputs": [{"name": "_minBet", "type": "uint256"}, {"name": "_maxPlayers", "type": "uint256"}],
-    "name": "createTable",
-    "outputs": [{"name": "", "type": "uint256"}],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [{"name": "_tableId", "type": "uint256"}, {"name": "_initialBalance", "type": "euint"}],
-    "name": "joinTable",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [{"name": "_tableId", "type": "uint256"}],
-    "name": "startGame",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {"name": "_tableId", "type": "uint256"},
-      {"name": "_amount", "type": "euint"},
-      {"name": "_fold", "type": "bool"}
-    ],
-    "name": "placeBet",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
+  { inputs:[{name:"_minBet",type:"uint256"},{name:"_maxPlayers",type:"uint256"}], name:"createTable", outputs:[{name:"",type:"uint256"}], stateMutability:"nonpayable", type:"function" },
+  { inputs:[{name:"_tableId",type:"uint256"},{name:"_initialBalance",type:"euint"}], name:"joinTable", outputs:[], stateMutability:"nonpayable", type:"function" },
+  { inputs:[{name:"_tableId",type:"uint256"}], name:"startGame", outputs:[], stateMutability:"nonpayable", type:"function" },
+  { inputs:[{name:"_tableId",type:"uint256"},{name:"_amount",type:"euint"},{name:"_fold",type:"bool"}], name:"placeBet", outputs:[], stateMutability:"nonpayable", type:"function" }
 ];
 
 const PRIVARA_GATEWAY_ABI = [
-  {
-    "inputs": [{"name": "_amount", "type": "euint"}],
-    "name": "deposit",
-    "outputs": [{"name": "", "type": "uint256"}],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [{"name": "_amount", "type": "euint"}],
-    "name": "requestWithdrawal",
-    "outputs": [{"name": "", "type": "uint256"}],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
+  { inputs:[{name:"_amount",type:"euint"}], name:"deposit", outputs:[{name:"",type:"uint256"}], stateMutability:"nonpayable", type:"function" },
+  { inputs:[{name:"_amount",type:"euint"}], name:"requestWithdrawal", outputs:[{name:"",type:"uint256"}], stateMutability:"nonpayable", type:"function" }
 ];
 
-/**
- * Hook for encrypting data using COFHE SDK
- */
-export function useEncrypt() {
-  const [encryptedData, setEncryptedData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+// Initialize cofhejs once (can re-init on account change)
+export async function initializeCofhe(userProvider: any, userSigner: any) {
+  await cofhejs.initialize({ provider: userProvider, signer: userSigner });
+}
 
-  const encrypt = async (value: number | bigint, bitSize: number = 32) => {
+// Encrypt / Decrypt hooks
+export function useEncrypt() {
+  const [encryptedData, setEncryptedData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<any>(null);
+
+  const encrypt = async (value: number | bigint) => {
     setIsLoading(true);
     setError(null);
-    
     try {
-      // Using COFHE SDK to encrypt values
-      const result = await encrypt({
-        value: BigInt(value),
-        bitSize: bitSize
-      });
-      
+      const result = await cofhejs.encrypt(Encryptable.uint32(value));
       setEncryptedData(result);
       return result;
     } catch (err) {
@@ -87,20 +44,16 @@ export function useEncrypt() {
   return { encrypt, encryptedData, isLoading, error };
 }
 
-/**
- * Hook for decrypting data using COFHE SDK
- */
 export function useDecrypt() {
-  const [decryptedData, setDecryptedData] = useState(null);
+  const [decryptedData, setDecryptedData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<any>(null);
 
   const decrypt = async (encryptedValue: any) => {
     setIsLoading(true);
     setError(null);
-    
     try {
-      const result = await decrypt(encryptedValue);
+      const result = await cofhejs.decrypt(encryptedValue);
       setDecryptedData(result);
       return result;
     } catch (err) {
@@ -114,16 +67,12 @@ export function useDecrypt() {
   return { decrypt, decryptedData, isLoading, error };
 }
 
-/**
- * Hook for interacting with PokerEngine contract
- */
+// Poker Engine hook
 export function usePokerEngine(contractAddress: string) {
-  const { address: userAddress } = useAccount();
   const { writeContract } = useWriteContract();
-  
-  // Create a new table
+
   const createTable = async (minBet: number, maxPlayers: number) => {
-    writeContract({
+    return writeContract({
       address: contractAddress as `0x${string}`,
       abi: POKER_ENGINE_ABI,
       functionName: 'createTable',
@@ -131,12 +80,9 @@ export function usePokerEngine(contractAddress: string) {
     });
   };
 
-  // Join an existing table
   const joinTable = async (tableId: number, balance: number) => {
-    const { encrypt } = await import('cofhe-sdk');
-    const encryptedBalance = await encrypt({ value: BigInt(balance), bitSize: 32 });
-    
-    writeContract({
+    const encryptedBalance = await cofhejs.encrypt(Encryptable.uint32(balance));
+    return writeContract({
       address: contractAddress as `0x${string}`,
       abi: POKER_ENGINE_ABI,
       functionName: 'joinTable',
@@ -144,9 +90,8 @@ export function usePokerEngine(contractAddress: string) {
     });
   };
 
-  // Start the game
-  const startGame = (tableId: number) => {
-    writeContract({
+  const startGame = async (tableId: number) => {
+    return writeContract({
       address: contractAddress as `0x${string}`,
       abi: POKER_ENGINE_ABI,
       functionName: 'startGame',
@@ -154,12 +99,9 @@ export function usePokerEngine(contractAddress: string) {
     });
   };
 
-  // Place a bet
   const placeBet = async (tableId: number, amount: number, fold: boolean) => {
-    const { encrypt } = await import('cofhe-sdk');
-    const encryptedAmount = await encrypt({ value: BigInt(amount), bitSize: 32 });
-    
-    writeContract({
+    const encryptedAmount = await cofhejs.encrypt(Encryptable.uint32(amount));
+    return writeContract({
       address: contractAddress as `0x${string}`,
       abi: POKER_ENGINE_ABI,
       functionName: 'placeBet',
@@ -170,18 +112,13 @@ export function usePokerEngine(contractAddress: string) {
   return { createTable, joinTable, startGame, placeBet };
 }
 
-/**
- * Hook for interacting with Privara Payment Gateway
- */
+// Privara Payment Gateway hook
 export function usePrivaraGateway(contractAddress: string) {
   const { writeContract } = useWriteContract();
 
-  // Deposit funds
   const deposit = async (amount: number) => {
-    const { encrypt } = await import('cofhe-sdk');
-    const encryptedAmount = await encrypt({ value: BigInt(amount), bitSize: 32 });
-    
-    writeContract({
+    const encryptedAmount = await cofhejs.encrypt(Encryptable.uint32(amount));
+    return writeContract({
       address: contractAddress as `0x${string}`,
       abi: PRIVARA_GATEWAY_ABI,
       functionName: 'deposit',
@@ -189,12 +126,9 @@ export function usePrivaraGateway(contractAddress: string) {
     });
   };
 
-  // Request withdrawal
   const requestWithdrawal = async (amount: number) => {
-    const { encrypt } = await import('cofhe-sdk');
-    const encryptedAmount = await encrypt({ value: BigInt(amount), bitSize: 32 });
-    
-    writeContract({
+    const encryptedAmount = await cofhejs.encrypt(Encryptable.uint32(amount));
+    return writeContract({
       address: contractAddress as `0x${string}`,
       abi: PRIVARA_GATEWAY_ABI,
       functionName: 'requestWithdrawal',
@@ -205,81 +139,38 @@ export function usePrivaraGateway(contractAddress: string) {
   return { deposit, requestWithdrawal };
 }
 
-/**
- * Hook for managing poker game state
- */
+// Poker Game Manager
 export function usePokerGame(pokerEngineAddress: string, privaraAddress: string) {
   const { address: userAddress } = useAccount();
   const pokerEngine = usePokerEngine(pokerEngineAddress);
   const privara = usePrivaraGateway(privaraAddress);
   const { decrypt } = useDecrypt();
-  
+
   const [currentTable, setCurrentTable] = useState<number | null>(null);
-  const [myCards, setMyCards] = useState<{ card1: number; card2: number } | null>(null);
   const [gameState, setGameState] = useState<string>('Waiting');
 
-  // Initialize game session
-  const initializeSession = async () => {
-    // Check if user has balance in Privara
-    // If not, prompt for deposit
-  };
-
-  // Create or join table
   const joinOrCreateTable = async (tableId?: number, minBet: number = 100, maxPlayers: number = 6) => {
-    if (tableId !== undefined) {
-      // Join existing table
-      await privara.deposit(minBet * 10); // Deposit 10x min bet
+    if (tableId) {
+      await privara.deposit(minBet * 10);
       await pokerEngine.joinTable(tableId, minBet * 10);
       setCurrentTable(tableId);
     } else {
-      // Create new table
-      const tableId = await pokerEngine.createTable(minBet, maxPlayers);
-      setCurrentTable(tableId);
+      const newTableId = await pokerEngine.createTable(minBet, maxPlayers);
+      setCurrentTable(Number(newTableId));
     }
   };
 
-  // Start the game
   const startGameSession = async () => {
     if (currentTable !== null) {
       await pokerEngine.startGame(currentTable);
-      // After game starts, player can decrypt their own cards
-      await fetchMyCards();
     }
   };
 
-  // Fetch and decrypt player's cards
-  const fetchMyCards = async () => {
-    if (currentTable === null || !userAddress) return;
-    
-    // In production, read encrypted cards from contract and decrypt
-    // This is simplified - actual implementation would use contract reads
-    console.log('Fetching encrypted cards for:', userAddress);
-  };
-
-  // Make a move (bet, call, raise, fold)
   const makeMove = async (action: 'bet' | 'call' | 'raise' | 'fold', amount: number = 0) => {
     if (currentTable === null) return;
-    
-    const isFold = action === 'fold';
-    await pokerEngine.placeBet(currentTable, amount, isFold);
+    const fold = action === 'fold';
+    await pokerEngine.placeBet(currentTable, amount, fold);
   };
 
-  return {
-    currentTable,
-    myCards,
-    gameState,
-    initializeSession,
-    joinOrCreateTable,
-    startGameSession,
-    makeMove,
-    fetchMyCards
-  };
+  return { currentTable, gameState, joinOrCreateTable, startGameSession, makeMove, decrypt };
 }
-
-export default {
-  useEncrypt,
-  useDecrypt,
-  usePokerEngine,
-  usePrivaraGateway,
-  usePokerGame
-};

@@ -1,0 +1,26 @@
+{
+  "lib/cofhe-contracts": {
+    "tag": {
+      "name": "v0.1.3",
+      "rev": "cb76c99620e1b4acd395e00672be21e48702429f"
+    }
+  },
+  "lib/cofhejs": {
+    "tag": {
+      "name": "v0.3.1",
+      "rev": "bd25733be2f11b06f7f152241ff6286a16b1ef13"
+    }
+  },
+  "lib/forge-std": {
+    "tag": {
+      "name": "v1.15.0",
+      "rev": "0844d7e1fc5e60d77b68e469bff60265f236c398"
+    }
+  },
+  "lib/openzeppelin-contracts": {
+    "tag": {
+      "name": "v5.6.1",
+      "rev": "5fd1781b1454fd1ef8e722282f86f9293cacf256"
+    }
+  }
+}

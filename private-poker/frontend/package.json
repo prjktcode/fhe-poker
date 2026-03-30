@@ -13,7 +13,7 @@
     "react-dom": "^18.2.0",
     "wagmi": "^1.4.0",
     "viem": "^1.10.0",
-    "cofhe-sdk": "latest"
+    "cofhejs": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
